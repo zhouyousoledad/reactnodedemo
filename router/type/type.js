@@ -20,7 +20,9 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 		var skip = (req.query.page-1)*limp
 		var myobj = {}
 		if(req.query.name != '' && req.query.name !=null){
-			myobj.name = req.query.name
+			var str="^.*"+req.query.name+".*$"
+    		var reg = new RegExp(str)
+			myobj.name = reg
 		}
 		myobj.pid = 0
 		dbo.collection("type").find(myobj).count(function (err, result) {
@@ -60,6 +62,22 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 			})							
 		})
 	})
+	router.get('/findname',function(req,res,next){
+		var myobj = {"typeCode":req.query.typeCode}
+		dbo.collection("type").find(myobj).toArray(function(err,result){
+
+			var idobj = {"pid":(result[0]._id).toString()}
+			
+			dbo.collection("type").find(idobj).toArray(function(err,results){
+			
+				var data={
+					code:200,
+					data:results,
+				}
+				res.jsonp(data)	
+			})
+		})
+	})
 	router.post('/add',function(req,res,next){	 //添加字典
 			var myobj = req.body
 			var ress = res
@@ -76,7 +94,7 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 			var ress = res
 			let form = new multiparty.Form();
 			form.parse(req, function(err,fields,file){
-				console.log(file.file)
+			
 				if(file.file == undefined){
 					var obj={
 							"name":fields.name,
@@ -196,6 +214,35 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 						}
 						ress.jsonp(data);  
 				});
+	})
+	router.post('/delete',function(req,res,next){  //删除字典，可批量
+			var arr=[]
+			var ress = res
+			var idarr = req.body.id.split(',')
+			idarr.forEach(v=>{
+				var myobjs ={"pid":v}
+				dbo.collection("type").find(myobjs).toArray(function (err, result) {
+					var findarr = []
+					result.forEach(a=>{
+						findarr.push(a._id)
+					})
+					var myobjss ={"_id":{$in:findarr}};
+					dbo.collection("type").deleteMany(myobjss, function(err, obj) {
+						if (err) throw err;		
+					});
+				})
+				v = ObjectId(v)
+				arr.push(v)
+			})
+			var myobj ={"_id":{$in:arr}};								
+			dbo.collection("type").deleteMany(myobj, function(err, obj) {
+					if (err) throw err;
+						var data={
+							code: 200,
+							msg:'删除成功'
+						}
+					ress.jsonp(data);
+			});	
 	})
 	router.post('/deletedetail',function(req,res,next){  //删除字典，可批量
 			var arr=[]

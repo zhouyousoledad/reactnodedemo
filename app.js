@@ -29,7 +29,9 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.get('/public/img/*', function (req, res) {
     res.sendFile( __dirname + "/" + req.url );
 })
-
+app.get('/public/media/*', function (req, res) {
+    res.sendFile( __dirname + "/" + req.url );
+})
 app.use('/react',index)
 
 app.listen(3032);

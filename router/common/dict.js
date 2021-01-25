@@ -16,7 +16,9 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 		var skip = (req.query.page-1)*limp
 		var myobj = {}
 		if(req.query.name != '' && req.query.name !=null){
-			myobj.name = req.query.name
+			var str="^.*"+req.query.name+".*$"
+    		var reg = new RegExp(str)
+			myobj.name = reg
 		}
 		dbo.collection("dict").find(myobj).count(function (err, result) {
 			var num = result
@@ -35,7 +37,25 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 		var limp = Number(req.query.size)
 		var skip = (req.query.page-1)*limp
 		var myobj = {"name":req.query.name}
-		dbo.collection("dictdeatil").find(myobj).count(function (err, result) {
+
+		if(isNaN(limp)){
+			dbo.collection("dictdeatil").find(myobj).count(function (err, result) {
+			var num = result
+			dbo.collection("dictdeatil").find(myobj).toArray(function(err,result){
+				for(var i=0;i<result.length;i++){
+					delete result[i].name
+					result[i].key = i
+				}
+				var data={
+					code:200,
+					data:result,
+					total:num,
+				}
+				res.jsonp(data)	
+			})							
+		})
+		}else{
+			dbo.collection("dictdeatil").find(myobj).count(function (err, result) {
 			var num = result
 			dbo.collection("dictdeatil").find(myobj).limit(limp).skip(skip).toArray(function(err,result){
 				for(var i=0;i<result.length;i++){
@@ -50,6 +70,9 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 				res.jsonp(data)	
 			})							
 		})
+		}
+		
+		
 		
 	})
 	router.post('/add',function(req,res,next){	 //添加字典
@@ -123,6 +146,20 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 			var idarr = req.body.id.split(',')
 			idarr.forEach(v=>{
 				v = ObjectId(v)
+				var myobjs ={"_id":v}
+				dbo.collection("dict").find(myobjs).toArray(function (err, result) {
+					var newobj={"name":result[0].name}
+					dbo.collection("dictdeatil").find(newobj).toArray(function (err, result) {
+						var findarr = []
+						result.forEach(a=>{
+							findarr.push(a._id)
+						})
+						var myobjss ={"_id":{$in:findarr}};
+						dbo.collection("dictdeatil").deleteMany(myobjss, function(err, obj) {
+							if (err) throw err;		
+						});
+					})
+				})
 				arr.push(v)
 			})
 			var myobj ={"_id":{$in:arr}};								
