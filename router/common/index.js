@@ -14,7 +14,6 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 	if (err) throw err;
 	var dbo = db.db("React");  //选择数据库
 	router.post('/code',function(req,res){
-		
 		var captcha = svgCaptcha.create({
         size: 4,  //验证码长度
         width: 90, //svg宽度

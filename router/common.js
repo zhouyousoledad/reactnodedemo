@@ -14,7 +14,30 @@ function randomname() {
   }
   return nums;
 }
+async function toTree(data) {
+	let result = []
+	if(!Array.isArray(data)) {
+		return result
+	}
+	data.forEach(item => {
+		delete item.children;
+	});
+	let map = {};
+	data.forEach(item => {
+		map[item._id] = item;
+	});
+	data.forEach(item => {
+		let parent = map[item.pid];
+		if(parent) {
+			(parent.children || (parent.children = [])).push(item);
+		} else {
+			result.push(item);
+		}
+	});
+	return result;
+}
 module.exports = {
   log: log,
-  randomname: randomname
+  randomname: randomname,
+  toTree:toTree
 }  
