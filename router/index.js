@@ -11,6 +11,7 @@ var feed = require('./feed/feed.js')
 var comments = require('./comments/comments.js')
 var institutions = require('./institutions/institutions.js')
 var institutionuser = require('./institutions/instructionuser.js')
+var testbank = require('./testbank/testbank')
 router.use('/login',logins);
 router.use('/dict',dict);
 router.use('/type',type);
@@ -18,6 +19,7 @@ router.use('/label',label);
 router.use('/media',medias);
 router.use('/warning',warning)
 router.use('/feed',feed)
+router.use('/testbank',testbank)
 router.use('/comments',comments)
 router.use('/institutions',institutions)
 router.use('/institutionuser',institutionuser)

@@ -244,7 +244,7 @@ MongoClient.connect(url, {
 				arr.push(v)
 			})
 			var myobj ={"_id":{$in:arr}};
-			dbo.collection("media").find(myobj).toArray(function (err, result) {
+			dbo.collection("media").find(myobj).toArray(function (err, result) {  //删除图片
 				result.forEach(a=>{
 					if(a.url){
 						fs.unlinkSync('.'+a.url);

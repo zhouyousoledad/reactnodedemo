@@ -7,7 +7,11 @@ var querystring = require("querystring");
 var ObjectId = require('mongodb').ObjectId;
 var svgCaptcha = require('svg-captcha');
 var url = "mongodb://localhost:27017/";
+var multiparty = require('multiparty');
+var uploadDir = '/public/img/';
 var urls = require("url");
+var fs = require('fs');
+const logs = require("../common.js");
 router.use(bodyParser.json());
 router.use(bodyParser.urlencoded({ extended: false }));
 MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, function(err, db) {
@@ -30,6 +34,32 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
         result: captcha.data
     });
 	})
+	router.post('/uploads',function(req,res,next){
+		var ress = res
+		let form = new multiparty.Form();
+		form.parse(req, function(err, fields, file) {
+			var filename = logs.randomname()
+			var filepath = uploadDir + filename + '.png'
+			var readStream = fs.createReadStream(file.file[0].path);
+			var writeStream = fs.createWriteStream('.' + filepath);
+			readStream.pipe(writeStream);
+			readStream.on('end', function() {
+				fs.unlinkSync(file.file[0].path);
+				let obj = {
+					'url':filepath
+				}
+				dbo.collection("testimg").insertOne(obj, function(err, res) {
+					if(err) throw err;
+						var data = {
+							code: 200,
+							url:filepath,
+							msg:'操作成功'
+						}
+						ress.jsonp(data);
+				})
+			})	
+		})	
+	})
 	router.post('/login',function(req,res,next){
 		console.log(req.session.captcha)
 		var myobj = {"username":req.body.username,"password":req.body.password}
@@ -40,7 +70,12 @@ MongoClient.connect(url, { useNewUrlParser: true,useUnifiedTopology: true }, fun
 					code:0,
 					msg:'验证码错误'
 				}
-		}else{
+		}else if(req.session.captcha == undefined){
+			data = {
+				code:1,
+				msg:'验证码已过期'
+			}
+		}else{	
 			dbo.collection("user").find(myobj).toArray(function(err, result) { // 返回集合中所有数据
 			if(result == ""){
 				data = {
