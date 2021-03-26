@@ -122,24 +122,20 @@ MongoClient.connect(url, {
 				if(qtype != myobj.qtype){
 					if(myobj.qtype == 2){
 						flag = true  //这个地方要用primose
-//						var promise = new Promise(function(resolve,reject){
-//							delimg(req.body.tid)
-//							resolve()
-//						})
-//						promise.then(res=>{
-//							deltwobank(id,myobj,tid,myobj.qtype)
-//						})
-						
-						//清空两个库，直接修改返回
+						delimg(id,myobj,tid,myobj.qtype)
+
 					}else{
 						flag = false
 						//放行
 					}
 				}
 				if(!flag && anstype != myobj.anstype){
-					
 					flag = true
-					deltwobank(id,myobj,tid,myobj.qtype)
+					if(myobj.anstype == 0){
+						delimg(id,myobj,tid,myobj.qtype)
+					}else{
+						deltwobank(id,myobj,tid,myobj.qtype)
+					}
 					//清空两个库，直接修改返回
 				}else{
 					flag = false
@@ -242,6 +238,8 @@ MongoClient.connect(url, {
 		Promise.all(pList).then(function(res) {
 			dbo.collection("testbank").find({'_id':tid}).toArray(function(err, result) {
 				var tagdata = result[0].tagIds
+				var anstype = result[0].anstype
+				console.log(anstype)
 				var taglist = []
 				var resultlable = []
 				for(let i=0;i<tagdata.length;i++){
@@ -249,6 +247,7 @@ MongoClient.connect(url, {
 						taglist.push(new Promise(function(resolve,reject){
 							dbo.collection("label").find({'_id':ObjectId(tagdata[i])}).toArray(function(err, result) {
 								resultlable.push(result[0])
+								console.log(anstype)
 								resolve()
 							})	
 						}))
@@ -261,7 +260,28 @@ MongoClient.connect(url, {
 							let id = ObjectId(v)
 							dellist.push(id)
 						})
-						var myobj ={"_id":{$in:dellist}};
+						console.log(anstype)
+						if(anstype == 1){
+							var imgarr = []
+							console.log(deliddata)
+							for(let i=0;i<deliddata.length;i++){
+								(function(i){
+									imgarr.push(new Promise(function(resolve,reject){
+										console.log(deliddata[i])
+										dbo.collection("option").find({'_id':ObjectId(deliddata[i])}).toArray(function(err, resultimg) {
+										
+											fs.unlinkSync('.'+resultimg[0].option);
+											resolve(resultimg[0].option)
+										})	
+									}))
+								})(i)
+							}
+							Promise.all(imgarr).then(function(res){
+								let imgobj = {"url":{$in: res}}
+								dbo.collection("testimg").deleteMany(imgobj, function(err, obj) {
+									if (err) throw err;
+									
+									var myobj ={"_id":{$in:dellist}};
 						var optiontag = {"optionid":{$in:deliddata}}
 						dbo.collection("option").deleteMany(myobj, function(err, obj) {
 							if (err) throw err;
@@ -275,6 +295,26 @@ MongoClient.connect(url, {
 								ress.jsonp(data);
 							})		
 						});
+								})
+								
+							})
+						}else{
+							var myobj ={"_id":{$in:dellist}};
+						var optiontag = {"optionid":{$in:deliddata}}
+						dbo.collection("option").deleteMany(myobj, function(err, obj) {
+							if (err) throw err;
+							dbo.collection("optiontag").deleteMany(optiontag, function(err, obj) {
+								if (err) throw err;
+								var data={
+									code: 200,
+									data:resultlable,
+									msg:'添加成功'
+								}
+								ress.jsonp(data);
+							})		
+						});
+						}
+						
 					}else{
 						var data={
 							code: 200,
@@ -396,6 +436,7 @@ MongoClient.connect(url, {
 	})
 })
 function deltwobank(id,myobj,tid,type){  //清空两个库函数
+//	let imgobj = {"url":{$in: imgdata}}
 	dbo.collection("option").deleteMany(tid, function(err, obj) {
 		if (err) throw err;
 		dbo.collection("optiontag").deleteMany(tid,function(err,obj){
@@ -411,6 +452,9 @@ function deltagbank(id,myobj,tid,type){ //清空选项标签库函数
 	})
 }
 function update(id,myobj,type){  //更新第一步数据函数
+	if(myobj.qtype == 2){
+		delete myobj.anstype
+	}
 	var updateStr = {$set:myobj};
 	dbo.collection("testbank").updateOne(id, updateStr, function(err, res) {
 		if (err) throw err;
@@ -425,19 +469,27 @@ function update(id,myobj,type){  //更新第一步数据函数
 			outres.jsonp(data);  
 	});
 }
-function delimg(tid){  //删除图片
-	dbo.collection("option").find({'tid':tid}).toArray(function(err, results) {
+
+function delimg(id,myobj,tid,type){  //删除图片
+	var p = new Promise((resolve, reject) => {
+		
+	dbo.collection("option").find(tid).toArray(function(err, results) {
 		let imgdata = []
+		
 		results.forEach(w=>{
 			imgdata.push(w.option)
+			fs.unlinkSync('.'+w.option);
 		})
+		
 		let imgobj = {"url":{$in: imgdata}}
 		dbo.collection("testimg").deleteMany(imgobj, function(err, obj) {
 			if (err) throw err;
-			results.forEach(s=>{
-				fs.unlinkSync('.'+s.option);
-			})
+			resolve(true)
 		})
+	})
+	})
+	p.then(res=>{
+		deltwobank(id,myobj,tid,type)
 	})
 }
 module.exports = router
